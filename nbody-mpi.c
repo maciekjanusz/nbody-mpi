@@ -6,7 +6,7 @@
 #define ROOT 0
 
 const double G = 0.002;
-const double dt = 1;
+const double dt = 0.01;
 
 int count_lines(FILE* fp) {
   rewind(fp);
@@ -44,8 +44,7 @@ int main(int argc, char *argv[]) {
   int rank, comm_size; // communicator
   int i, j, N;
   int t_steps = 0;
-  int t_max = 10; // max time steps
-  double dt; // time step value
+  int t_max = 100; // max time steps
   FILE* file;
 
   // INIT
@@ -78,6 +77,10 @@ int main(int argc, char *argv[]) {
   double* fx = (double*) malloc(N * sizeof(double));
   double* fy = (double*) malloc(N * sizeof(double));
 
+  if(rank == ROOT) for(i = 0; i < N; i++) {
+    vx[i] = vy[i] = fx[i] = fy[i] = 0;
+  }
+
   if(rank == ROOT) {
     // on root node, read particles data from file
     read_particles(file, x, y, m, vx, vy);
@@ -95,6 +98,10 @@ int main(int argc, char *argv[]) {
   MPI_Bcast(vx, N, MPI_DOUBLE, ROOT, MPI_COMM_WORLD);
   MPI_Bcast(vy, N, MPI_DOUBLE, ROOT, MPI_COMM_WORLD);
 
+  if(rank == ROOT) {
+    print_particles(N, x, y, m, vx, vy);
+  }
+
   // start with time 0 + dt;
   while(++t_steps <= t_max) {
     // portion for <rank> process
@@ -106,11 +113,11 @@ int main(int argc, char *argv[]) {
         if(i == j) continue;
         // calculate force from each particle
         double dx = x[i] - x[j];
-				double dy = y[i] - y[j];
+        double dy = y[i] - y[j];
 				double d = sqrt(dx * dx + dy * dy);
-				double F = (G * m[i] * m[j]) / (d * d);
-				fx[i] += F * dx/d; // ---------------------- be careful, initialize to zeros
-				fy[i] += F * dy/d; // jw.
+        double F = (G * m[i] * m[j]) / (d * d);
+        fx[i] += F * dx/d; // ---------------------- be careful, initialize to zeros
+        fy[i] += F * dy/d; // jw.
       }
     }
     // forces are integrated. update position:
@@ -119,6 +126,8 @@ int main(int argc, char *argv[]) {
       vy[i] += dt * fy[i] / m[i];
       x[i] += dt * vx[i];
       y[i] += dt * vy[i];
+      // clear fx and fy
+      fx[i] = fy[i] = 0;
     }
 
     // 2. execute MPI_Allgather (in-place mode) to distribute results across all processes
@@ -130,12 +139,20 @@ int main(int argc, char *argv[]) {
                   MPI_COMM_WORLD);
     // at this point coord data is distributed and unified across all processes
 
-    if(rank == ROOT) {
-      print_particles(N, x, y, m, vx, vy);
-    }
+    // if(rank == ROOT) {
+    //   print_particles(N, x, y, m, vx, vy);
+    // }
+  }
+
+  if(rank == ROOT) {
+    print_particles(N, x, y, m, vx, vy);
   }
 
   MPI_Barrier(MPI_COMM_WORLD);
+
+  // DEINIT
+  MPI_Finalize();
+
   free(m);
   free(x);
   free(y);
@@ -143,7 +160,4 @@ int main(int argc, char *argv[]) {
   free(vy);
   free(fx);
   free(fy);
-
-  // DEINIT
-  MPI_Finalize();
 }
