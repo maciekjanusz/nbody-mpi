@@ -37,7 +37,15 @@ void print_particles(int N, double* x, double* y,
   }
   printf("\n");
 }
-
+void write_particles(int N, double* x, double* y, double* m, double* vx, double* vy, int d) {
+	char buffer[50];
+	FILE* fout;
+	sprintf(buffer, "%d.txt",d );
+	fout = fopen(buffer, "w");
+  	for(int i = 0; i < N; i++) {
+		fprintf (fout, "%f\t%f\t%f\n", x[i], y[i],m[i]);
+  	}
+}
 int main(int argc, char *argv[]) {
 
   // DECLARATIONS
