@@ -121,8 +121,8 @@ int main(int argc, char *argv[]) {
         // omit this particle
         if(i == j) continue;
         // calculate force from each particle
-        double dx = x[i] - x[j];
-        double dy = y[i] - y[j];
+        double dx = x[j] - x[i];
+        double dy = y[j] - y[i];
 				double d = sqrt(dx * dx + dy * dy);
         double F = (G * m[i] * m[j]) / (d * d);
         fx[i] += F * dx/d; // ---------------------- be careful, initialize to zeros
@@ -132,8 +132,8 @@ int main(int argc, char *argv[]) {
     // forces are integrated. update position:
     for(i = chunk_start; i < chunk_start + chunk_size; i++) {
       if(i >= N) continue;
-      vx[i] -= dt * fx[i] / m[i];
-      vy[i] -= dt * fy[i] / m[i];
+      vx[i] += dt * fx[i] / m[i];
+      vy[i] += dt * fy[i] / m[i];
       x[i] += dt * vx[i];
       y[i] += dt * vy[i];
       // clear fx and fy
