@@ -6,7 +6,7 @@
 #define ROOT 0
 
 const double G = 0.002;
-const double dt = 0.01;
+const double dt = 1;
 
 int count_lines(FILE* fp) {
   rewind(fp);
@@ -44,7 +44,7 @@ int main(int argc, char *argv[]) {
   int rank, comm_size; // communicator
   int i, j, N;
   int t_steps = 0;
-  int t_max = 100; // max time steps
+  int t_max = 10000; // max time steps
   FILE* file;
 
   // INIT
@@ -63,19 +63,20 @@ int main(int argc, char *argv[]) {
   // calculate data chunk size per process
   const int chunk_size = ceil((double) N / comm_size);
   const int chunk_start = rank * chunk_size;
+  const int buf_size = comm_size * chunk_size;
 
   // allocate arrays:
   // mass of particles, broadcast at start, keep constant
-  double* m = (double*) malloc(N * sizeof(double));
+  double* m = (double*) malloc(buf_size * sizeof(double));
   // coordinates, broadcast at start, changes in each iteration
-  double* x = (double*) malloc(N * sizeof(double));
-  double* y = (double*) malloc(N * sizeof(double));
+  double* x = (double*) malloc(buf_size * sizeof(double));
+  double* y = (double*) malloc(buf_size * sizeof(double));
   // velocity, scatter at start, changes in each iteration, used locally
-  double* vx = (double*) malloc(N * sizeof(double));
-  double* vy = (double*) malloc(N * sizeof(double));
+  double* vx = (double*) malloc(buf_size * sizeof(double));
+  double* vy = (double*) malloc(buf_size * sizeof(double));
   // forces - used only locally
-  double* fx = (double*) malloc(N * sizeof(double));
-  double* fy = (double*) malloc(N * sizeof(double));
+  double* fx = (double*) malloc(buf_size * sizeof(double));
+  double* fy = (double*) malloc(buf_size * sizeof(double));
 
   if(rank == ROOT) for(i = 0; i < N; i++) {
     vx[i] = vy[i] = fx[i] = fy[i] = 0;
@@ -122,6 +123,7 @@ int main(int argc, char *argv[]) {
     }
     // forces are integrated. update position:
     for(i = chunk_start; i < chunk_start + chunk_size; i++) {
+      if(i >= N) continue;
       vx[i] += dt * fx[i] / m[i];
       vy[i] += dt * fy[i] / m[i];
       x[i] += dt * vx[i];
