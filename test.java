@@ -110,7 +110,6 @@ public class test {
 			}
 			g2d.dispose();
 		}
-
 	}
 
 }
